@@ -97,10 +97,18 @@ function getFilteredModelPerformance() {
 }
 
 function metricCard(metric) {
+  const progressWidth = Math.max(8, Math.min(100, Number(metric.progress || 0)));
   return `
     <article class="kpi-card surface">
-      <div class="kpi-label">${metric.label}</div>
+      <div class="kpi-topline">
+        <div class="kpi-label">${metric.label}</div>
+        ${metric.badge ? `<span class="kpi-badge ${metric.badgeTone || "neutral"}">${metric.badge}</span>` : ""}
+      </div>
       <div class="kpi-value">${metric.value}</div>
+      ${metric.comparison ? `<div class="kpi-comparison">${metric.comparison}</div>` : ""}
+      <div class="kpi-progress">
+        <div class="kpi-progress-fill ${metric.progressTone || "neutral"}" style="width:${progressWidth}%"></div>
+      </div>
       <div class="kpi-detail">${metric.detail}</div>
     </article>
   `;
@@ -156,15 +164,18 @@ function leaderboardRow(item, index) {
   const width = Math.max(12, (Number(item.totalUnitsSold || 0) / Math.max(1, Number(item.maxUnits || 1))) * 100);
   return `
     <div class="leaderboard-row">
-      <div class="leaderboard-head">
-        <div>
-          <div class="leaderboard-rank">#${index + 1}</div>
-          <div class="leaderboard-name">${item.productName || `Product ${item.productId}`}</div>
-          <div class="leaderboard-meta">${item.category || "Uncategorised"}</div>
-        </div>
-        <strong>${formatCompactNumber(item.totalUnitsSold)}</strong>
+      <div>
+        <div class="leaderboard-rank">#${index + 1}</div>
+        <div class="leaderboard-name">${item.productName || `Product ${item.productId}`}</div>
+        <div class="leaderboard-meta">${item.category || "Uncategorised"}</div>
       </div>
-      <div class="leaderboard-track"><div class="leaderboard-fill" style="width:${width}%"></div></div>
+      <div class="leaderboard-bar-block">
+        <div class="leaderboard-bar-meta">
+          <span>Units sold</span>
+          <strong>${formatCompactNumber(item.totalUnitsSold)}</strong>
+        </div>
+        <div class="leaderboard-track"><div class="leaderboard-fill" style="width:${width}%"></div></div>
+      </div>
     </div>
   `;
 }
@@ -181,19 +192,25 @@ function renderHorizontalBars(containerId, items, valueKey, formatter, emptyMess
   }
 
   const maxValue = Math.max(...items.map((item) => Number(item[valueKey] || 0)), 1);
-  root.innerHTML = items.map((item) => {
-    const value = Number(item[valueKey] || 0);
-    const width = Math.max(12, (value / maxValue) * 100);
-    return `
-      <div class="bar-row">
-        <div class="bar-head">
-          <span class="bar-label">${item.label}</span>
-          <strong>${formatter(value)}</strong>
+  root.innerHTML = `
+    <div class="bar-chart-label">
+      <span class="bar-chart-dot"></span>
+      <span>Units sold</span>
+    </div>
+    ${items.map((item) => {
+      const value = Number(item[valueKey] || 0);
+      const width = Math.max(12, (value / maxValue) * 100);
+      return `
+        <div class="bar-row">
+          <div class="bar-head">
+            <span class="bar-label">${item.label}</span>
+            <strong>${formatter(value)}</strong>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
         </div>
-        <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
-      </div>
-    `;
-  }).join("");
+      `;
+    }).join("")}
+  `;
 }
 
 function getTopProductsByGroup(rows, groupKey) {
@@ -345,7 +362,7 @@ function renderSalesForecastChart() {
   summaryRoot.innerHTML = `
     <div>
       <div class="chart-title">${dashboardState.selectedForecastProduct || "Overall sales forecast trend"}</div>
-      <div class="chart-meta">${dashboardState.selectedForecastProduct ? "Past vs predicted units sold for the selected product" : "Average historical vs predicted units sold grouped by month"}</div>
+      <div class="chart-meta">${dashboardState.selectedForecastProduct ? "How this product has sold versus what the forecast expects next" : "How average monthly sales compare with the forecast"}</div>
     </div>
     <div class="chart-legend">
       <span><i class="legend-dot actual"></i>Past</span>
@@ -427,6 +444,112 @@ function buildKpis() {
   ];
 }
 
+function buildRevenueAwareKpis() {
+  const performance = getFilteredModelPerformance();
+  const priceModel = performance.find((row) => String(row.modelType).toLowerCase() === "price");
+  const salesModel = performance.find((row) => String(row.modelType).toLowerCase() === "sales");
+  const topSeason = getFilteredSeasonalInsights()[0];
+  const salesRows = getFilteredSalesForecasts();
+  const currentRevenue = salesRows.reduce((sum, row) => sum + Number(row.price || 0) * Number(row.actualUnitsSold || 0), 0);
+  const projectedRevenue = salesRows.reduce((sum, row) => sum + Number(row.price || 0) * Number(row.predictedUnitsSold || 0), 0);
+  const totalActualDemand = salesRows.reduce((sum, row) => sum + Number(row.actualUnitsSold || 0), 0);
+  const totalPredictedDemand = salesRows.reduce((sum, row) => sum + Number(row.predictedUnitsSold || 0), 0);
+  const demandChange = totalActualDemand === 0 ? 0 : ((totalPredictedDemand - totalActualDemand) / totalActualDemand) * 100;
+
+  return [
+    {
+      label: "Current Revenue",
+      value: currentRevenue ? `Rs ${(currentRevenue / 1000).toFixed(1)}K` : "Rs 0.0K",
+      detail: "Based on what the store is currently selling at today's demand level."
+    },
+    {
+      label: "Projected Revenue",
+      value: projectedRevenue ? `Rs ${(projectedRevenue / 1000).toFixed(1)}K` : "Rs 0.0K",
+      detail: "Expected next revenue if forecasted demand holds at the current selling price."
+    },
+    {
+      label: "Forecast Accuracy",
+      value: priceModel ? `${(Number(priceModel.r2 || 0) * 100).toFixed(1)}%` : "N/A",
+      detail: salesModel
+        ? `Price confidence ${(Number(priceModel?.r2 || 0) * 100).toFixed(1)}% • Sales confidence ${(Number(salesModel.r2 || 0) * 100).toFixed(1)}%`
+        : "Forecast confidence appears here when model metrics are available."
+    },
+    {
+      label: "Demand Trend",
+      value: `${demandChange >= 0 ? "+" : ""}${demandChange.toFixed(1)}%`,
+      detail: topSeason
+        ? `${topSeason.seasonality} currently shows the strongest buying activity.`
+        : "Seasonal demand signals appear here when data is available."
+    }
+  ];
+}
+
+function buildContextualKpis() {
+  const performance = getFilteredModelPerformance();
+  const priceModel = performance.find((row) => String(row.modelType).toLowerCase() === "price");
+  const salesModel = performance.find((row) => String(row.modelType).toLowerCase() === "sales");
+  const topSeason = getFilteredSeasonalInsights()[0];
+  const topProduct = getFilteredTopProducts()[0];
+  const salesRows = getFilteredSalesForecasts();
+  const currentRevenue = salesRows.reduce((sum, row) => sum + Number(row.price || 0) * Number(row.actualUnitsSold || 0), 0);
+  const projectedRevenue = salesRows.reduce((sum, row) => sum + Number(row.price || 0) * Number(row.predictedUnitsSold || 0), 0);
+  const totalActualDemand = salesRows.reduce((sum, row) => sum + Number(row.actualUnitsSold || 0), 0);
+  const totalPredictedDemand = salesRows.reduce((sum, row) => sum + Number(row.predictedUnitsSold || 0), 0);
+  const demandChange = totalActualDemand === 0 ? 0 : ((totalPredictedDemand - totalActualDemand) / totalActualDemand) * 100;
+  const revenueChange = currentRevenue === 0 ? 0 : ((projectedRevenue - currentRevenue) / currentRevenue) * 100;
+  const priceConfidence = Number(priceModel?.r2 || 0) * 100;
+  const salesConfidence = Number(salesModel?.r2 || 0) * 100;
+
+  return [
+    {
+      label: "Current Revenue",
+      value: currentRevenue ? `Rs ${(currentRevenue / 1000).toFixed(1)}K` : "Rs 0.0K",
+      comparison: `Projected revenue is ${revenueChange >= 0 ? "+" : ""}${revenueChange.toFixed(1)}% compared with current revenue.`,
+      detail: "Estimated from current selling price multiplied by actual units sold.",
+      progress: currentRevenue === 0 && projectedRevenue === 0 ? 8 : (currentRevenue / Math.max(currentRevenue, projectedRevenue, 1)) * 100,
+      progressTone: "accent",
+      badge: "Current baseline",
+      badgeTone: "neutral"
+    },
+    {
+      label: "Projected Revenue",
+      value: projectedRevenue ? `Rs ${(projectedRevenue / 1000).toFixed(1)}K` : "Rs 0.0K",
+      comparison: `${formatCurrency(projectedRevenue - currentRevenue)} expected change compared with current revenue.`,
+      detail: "Forecasted next revenue based on predicted demand and current selling price.",
+      progress: projectedRevenue === 0 && currentRevenue === 0 ? 8 : (projectedRevenue / Math.max(currentRevenue, projectedRevenue, 1)) * 100,
+      progressTone: revenueChange >= 0 ? "positive" : "warning",
+      badge: revenueChange >= 0 ? "Above baseline" : "Below baseline",
+      badgeTone: revenueChange >= 0 ? "positive" : "warning"
+    },
+    {
+      label: "Forecast Accuracy",
+      value: priceModel ? `${priceConfidence.toFixed(1)}%` : "N/A",
+      comparison: salesModel
+        ? `The price forecast is ${(priceConfidence - salesConfidence).toFixed(1)} points more reliable than the sales forecast.`
+        : "A direct model comparison appears when both forecasts are available.",
+      detail: salesModel
+        ? `Price confidence ${priceConfidence.toFixed(1)}% • Sales confidence ${salesConfidence.toFixed(1)}%`
+        : "Confidence levels show how reliable the forecast is when model metrics are available.",
+      progress: Math.max(priceConfidence, 8),
+      progressTone: "accent",
+      badge: salesModel ? "Price vs sales" : "",
+      badgeTone: "neutral"
+    },
+    {
+      label: "Demand Trend",
+      value: `${demandChange >= 0 ? "+" : ""}${demandChange.toFixed(1)}%`,
+      comparison: `${formatCompactNumber(totalPredictedDemand)} forecasted units versus ${formatCompactNumber(totalActualDemand)} current units.`,
+      detail: topSeason
+        ? `${topSeason.seasonality} is currently the strongest selling season in this store view.`
+        : "Seasonal demand direction appears here when enough data is available.",
+      progress: Math.max(Math.min(Math.abs(demandChange) * 8, 100), 8),
+      progressTone: demandChange >= 0 ? "positive" : "warning",
+      badge: topProduct ? "Top product signal" : "",
+      badgeTone: "neutral"
+    }
+  ];
+}
+
 function buildRecommendedActions() {
   const priceMoves = getFilteredPriceForecasts()
     .slice()
@@ -442,8 +565,8 @@ function buildRecommendedActions() {
         badge: change >= 0 ? "Increase Price" : "Review Price",
         tone: change >= 0 ? "positive" : "neutral",
         text: change >= 0
-          ? `AI suggests moving from ${formatCurrency(actual)} to ${formatCurrency(predicted)} to protect margin while demand stays healthy.`
-          : `AI suggests checking a lower target near ${formatCurrency(predicted)} to avoid demand drop-off.`
+          ? `Consider moving from ${formatCurrency(actual)} to ${formatCurrency(predicted)} to improve margin while demand stays healthy.`
+          : `Consider lowering the target toward ${formatCurrency(predicted)} to reduce the risk of losing demand.`
       };
     });
 
@@ -456,7 +579,7 @@ function buildRecommendedActions() {
       meta: `${row.weatherCondition || "All weather"} • ${row.seasonality || "Demand forecast"}`,
       badge: "High Demand",
       tone: "accent",
-      text: `Projected demand reaches ${Math.round(Number(row.predictedUnitsSold || 0))} units. Plan replenishment early to avoid missed sales.`
+      text: `Demand is expected to reach ${Math.round(Number(row.predictedUnitsSold || 0))} units. Plan replenishment early to avoid missed sales.`
     }));
 
   return [...priceMoves, ...demandMoves];
@@ -477,8 +600,8 @@ function buildStockAlerts() {
           badge: needsRestock ? "Restock" : "Monitor",
           tone: needsRestock ? "warning" : "neutral",
         text: needsRestock
-          ? `Projected demand is ${Math.round(projectedDemand)} units, which is above current stock. Reorder this item soon.`
-          : `Projected demand is ${Math.round(projectedDemand)} units. Current stock looks stable for now.`
+          ? `Expected demand is ${Math.round(projectedDemand)} units, which is above current stock. Reorder this item soon.`
+          : `Expected demand is ${Math.round(projectedDemand)} units. Current stock looks stable for now.`
       };
       });
 }
@@ -558,7 +681,7 @@ function openProductDetailModal(productName) {
       <h3>Demand Outlook</h3>
       <p>
         ${salesRows.length
-          ? `Projected demand averages ${Math.round(avgPredictedDemand)} units based on the imported forecast records.`
+          ? `Expected demand averages ${Math.round(avgPredictedDemand)} units based on the imported forecast records.`
           : "No imported sales forecast rows are available for this product yet."}
       </p>
       ${latestSales ? `
@@ -591,7 +714,7 @@ function closeProductDetailModal() {
 }
 
 function renderMetrics() {
-  document.getElementById("metrics").innerHTML = buildKpis().map(metricCard).join("");
+  document.getElementById("metrics").innerHTML = buildContextualKpis().map(metricCard).join("");
 }
 
 function setAuthView(isAuthenticated) {
@@ -681,9 +804,9 @@ function renderSeasonalInsights() {
   const topSeason = items[0];
   const topSeasonProduct = topProductsBySeason.find((item) => item.label === topSeason.seasonality);
   copyRoot.innerHTML = `
-    <p class="insight-title">${topSeason.seasonality} leads seasonal demand</p>
-    <p class="insight-text">${formatCompactNumber(topSeason.totalUnitsSold)} units sold in the imported dataset, with an average selling price of ${formatCurrency(topSeason.avgPrice)}.</p>
-    <p class="insight-text">${topSeasonProduct ? `${topSeasonProduct.productName} is the most sold product in ${topSeason.seasonality}, with ${formatCompactNumber(topSeasonProduct.unitsSold)} units sold.` : "Top product by season will appear here when sales rows are available."}</p>
+    <p class="insight-title">${topSeason.seasonality} is the strongest selling season</p>
+    <p class="insight-text">${formatCompactNumber(topSeason.totalUnitsSold)} units were sold in this season, with an average selling price of ${formatCurrency(topSeason.avgPrice)}.</p>
+    <p class="insight-text">${topSeasonProduct ? `${topSeasonProduct.productName} is the best-selling product in ${topSeason.seasonality}, with ${formatCompactNumber(topSeasonProduct.unitsSold)} units sold.` : "The top product for each season will appear here when sales rows are available."}</p>
     ${compactInsightList(topProductsBySeason)}
   `;
 
@@ -711,9 +834,9 @@ function renderWeatherInsights() {
   const topWeather = items[0];
   const topWeatherProduct = topProductsByWeather.find((item) => item.label === topWeather.weatherCondition);
   copyRoot.innerHTML = `
-    <p class="insight-title">${topWeather.weatherCondition} weather shows the strongest demand</p>
-    <p class="insight-text">${formatCompactNumber(topWeather.totalUnitsSold)} units sold, with average discount ${Number(topWeather.avgDiscount || 0).toFixed(1)}% across the imported dataset.</p>
-    <p class="insight-text">${topWeatherProduct ? `${topWeatherProduct.productName} is the most sold product during ${topWeather.weatherCondition.toLowerCase()} weather, with ${formatCompactNumber(topWeatherProduct.unitsSold)} units sold.` : "Top product by weather will appear here when sales rows are available."}</p>
+    <p class="insight-title">${topWeather.weatherCondition} weather drives the highest demand</p>
+    <p class="insight-text">${formatCompactNumber(topWeather.totalUnitsSold)} units were sold under this weather condition, with an average discount of ${Number(topWeather.avgDiscount || 0).toFixed(1)}%.</p>
+    <p class="insight-text">${topWeatherProduct ? `${topWeatherProduct.productName} sells best during ${topWeather.weatherCondition.toLowerCase()} weather, with ${formatCompactNumber(topWeatherProduct.unitsSold)} units sold.` : "The top product for each weather condition will appear here when sales rows are available."}</p>
     ${compactInsightList(topProductsByWeather)}
   `;
 
@@ -758,8 +881,8 @@ function renderDiscountInsights() {
 
   const strongest = items.slice().sort((a, b) => b.predictedUnitsSold - a.predictedUnitsSold)[0];
   copyRoot.innerHTML = `
-    <p class="insight-title">${strongest.label} discount band drives the strongest projected demand</p>
-    <p class="insight-text">Average projected demand reaches ${Math.round(strongest.predictedUnitsSold)} units in this discount range.</p>
+    <p class="insight-title">${strongest.label} discounts perform best</p>
+    <p class="insight-text">Average expected demand reaches ${Math.round(strongest.predictedUnitsSold)} units in this discount range.</p>
   `;
 
   renderHorizontalBars(
@@ -794,6 +917,22 @@ function wireInteractions() {
   if (dashboardState.interactionsBound) {
     return;
   }
+
+  document.querySelectorAll(".nav-item[data-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetId = button.dataset.target;
+      const target = document.getElementById(targetId);
+      if (!target) {
+        return;
+      }
+
+      document.querySelectorAll(".nav-item[data-target]").forEach((item) => {
+        item.classList.toggle("active", item === button);
+      });
+
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 
   document.getElementById("searchInput").addEventListener("input", (event) => {
     dashboardState.searchTerm = event.target.value;

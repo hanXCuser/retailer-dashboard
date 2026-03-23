@@ -41,19 +41,19 @@
 
         <div class="nav-group">
           <p class="nav-label">Overview</p>
-          <button class="nav-item active" type="button">
+          <button class="nav-item active" type="button" data-target="metrics">
             <span class="nav-icon emerald">K</span>
             <span>KPI Snapshot</span>
           </button>
-          <button class="nav-item" type="button">
+          <button class="nav-item" type="button" data-target="forecastSection">
             <span class="nav-icon blue">F</span>
             <span>Forecasting</span>
           </button>
-          <button class="nav-item" type="button">
+          <button class="nav-item" type="button" data-target="stockSection">
             <span class="nav-icon amber">S</span>
             <span>Stock Watch</span>
           </button>
-          <button class="nav-item" type="button">
+          <button class="nav-item" type="button" data-target="insightsSection">
             <span class="nav-icon pink">I</span>
             <span>Insights</span>
           </button>
@@ -88,7 +88,7 @@
 
         <section class="kpi-grid" id="metrics"></section>
 
-        <section class="primary-grid">
+        <section class="primary-grid" id="forecastSection">
           <article class="surface chart-card">
             <div class="section-head">
               <div>
@@ -118,7 +118,7 @@
           </aside>
         </section>
 
-        <section class="analytics-grid">
+        <section class="analytics-grid" id="stockSection">
           <article class="surface">
             <div class="section-head">
               <div>
@@ -150,7 +150,7 @@
           </article>
         </section>
 
-        <section class="bottom-grid">
+        <section class="bottom-grid" id="insightsSection">
           <details class="surface insight-panel" open>
             <summary>
               <div>
