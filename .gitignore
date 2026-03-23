@@ -1,4 +1,4 @@
 .vercel
 .env
 .env*.local
-server.log
+server.loggit commit -m "Initial retailer dashboard"

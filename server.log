@@ -1,0 +1,5 @@
+
+> retailer-dashboard@1.0.0 start
+> node be/server.js
+
+Retailer dashboard running on http://localhost:3000
