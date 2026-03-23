@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RetailPro Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <section class="auth-shell" id="authShell">
+      <article class="auth-card surface">
+        <p class="eyebrow">Store Login</p>
+        <h1>Access Your Dashboard</h1>
+        <p class="auth-copy">Sign in with the store account linked to your store to open a store-specific forecasting dashboard.</p>
+        <form class="auth-form" id="loginForm">
+          <label class="auth-field">
+            <span>Email</span>
+            <input id="loginEmail" type="email" placeholder="store.manager@example.com" required />
+          </label>
+          <label class="auth-field">
+            <span>Password</span>
+            <input id="loginPassword" type="password" placeholder="Enter password" required />
+          </label>
+          <button class="ghost-button auth-submit" type="submit">Login</button>
+          <p class="auth-error" id="authError" hidden></p>
+          <p class="auth-success" id="authSuccess" hidden></p>
+        </form>
+      </article>
+    </section>
+
+    <div class="dashboard-shell" id="dashboardShell" hidden>
+      <aside class="sidebar surface">
+        <div class="brand-block">
+          <p class="eyebrow">Retail Analytics</p>
+          <h1>Retailer Dashboard</h1>
+          <p>Decision-focused pricing, demand, and stock insights designed for retail teams.</p>
+        </div>
+
+        <div class="nav-group">
+          <p class="nav-label">Overview</p>
+          <button class="nav-item active" type="button">
+            <span class="nav-icon emerald">K</span>
+            <span>KPI Snapshot</span>
+          </button>
+          <button class="nav-item" type="button">
+            <span class="nav-icon blue">F</span>
+            <span>Forecasting</span>
+          </button>
+          <button class="nav-item" type="button">
+            <span class="nav-icon amber">S</span>
+            <span>Stock Watch</span>
+          </button>
+          <button class="nav-item" type="button">
+            <span class="nav-icon pink">I</span>
+            <span>Insights</span>
+          </button>
+        </div>
+
+        <div class="nav-group">
+          <p class="nav-label">Session</p>
+          <div class="store-session-meta" id="storeSessionMeta">Not logged in</div>
+          <button class="nav-item logout-item" id="logoutButton" type="button">
+            <span class="nav-icon amber">L</span>
+            <span>Log Out</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-column">
+        <header class="topbar surface">
+          <div>
+            <p class="eyebrow">Retail Analytics</p>
+            <h1 id="storyTitle">RetailPro Forecast Console</h1>
+            <p id="storyDescription">Monitor predictive sales performance, pricing opportunities, and seasonal demand signals.</p>
+          </div>
+
+          <div class="topbar-actions">
+            <label class="search-box">
+              <span>Search</span>
+              <input id="searchInput" type="text" placeholder="Type a product or category" />
+            </label>
+            <button class="ghost-button" id="syncButton">Refresh Data</button>
+          </div>
+        </header>
+
+        <section class="kpi-grid" id="metrics"></section>
+
+        <section class="primary-grid">
+          <article class="surface chart-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Main Forecast</p>
+                <h2>Sales Forecast: Past vs Predicted</h2>
+              </div>
+              <div class="chart-controls">
+                <label class="chart-search-box">
+                  <input id="forecastProductInput" type="text" list="forecastProductOptions" placeholder="Choose product..." />
+                </label>
+                <datalist id="forecastProductOptions"></datalist>
+                <button class="ghost-button" id="resetChartButton">Reset</button>
+              </div>
+            </div>
+            <div class="chart-summary" id="salesChartSummary"></div>
+            <div class="main-chart-frame" id="salesForecastChart"></div>
+          </article>
+
+          <aside class="surface actions-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Recommended Actions</p>
+                <h2>Pricing and Demand Suggestions</h2>
+              </div>
+            </div>
+            <div class="actions-list" id="recommendedActions"></div>
+          </aside>
+        </section>
+
+        <section class="analytics-grid">
+          <article class="surface">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Stock Watch</p>
+                <h2>Stock Alerts</h2>
+              </div>
+            </div>
+            <div class="performance-grid" id="stockAlertsGrid"></div>
+          </article>
+
+          <article class="surface">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Demand Signals</p>
+                <h2>High-Demand Products</h2>
+              </div>
+            </div>
+            <div class="leaderboard" id="topProductsChart"></div>
+          </article>
+
+          <article class="surface">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Model Health</p>
+                <h2>Forecast Performance</h2>
+              </div>
+            </div>
+            <div class="performance-grid" id="modelPerformanceGrid"></div>
+          </article>
+        </section>
+
+        <section class="bottom-grid">
+          <details class="surface insight-panel" open>
+            <summary>
+              <div>
+                <p class="section-kicker">Secondary Insight</p>
+                <h2>Seasonality</h2>
+              </div>
+              <span class="summary-hint">Expand</span>
+            </summary>
+            <div class="insight-body">
+              <div class="insight-copy" id="seasonalInsightCopy"></div>
+              <div class="insight-visual" id="seasonalInsightsChart"></div>
+            </div>
+          </details>
+
+          <details class="surface insight-panel">
+            <summary>
+              <div>
+                <p class="section-kicker">Secondary Insight</p>
+                <h2>Weather and Discounts</h2>
+              </div>
+              <span class="summary-hint">Expand</span>
+            </summary>
+            <div class="insight-body">
+              <div class="combined-insight-copy">
+                <div class="insight-copy-block" id="weatherInsightCopy"></div>
+                <div class="insight-copy-block" id="discountInsightCopy"></div>
+              </div>
+              <div class="combined-insight-visual">
+                <div class="insight-visual-block" id="weatherInsightsChart"></div>
+                <div class="insight-visual-block" id="discountChart"></div>
+              </div>
+            </div>
+          </details>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="productModalBackdrop" hidden>
+      <section class="product-modal surface" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+        <div class="modal-head">
+          <div>
+            <p class="section-kicker">Focused Forecast View</p>
+            <h2 id="productModalTitle">Product Detail</h2>
+          </div>
+          <button class="ghost-button" id="closeProductModalButton" type="button">Close</button>
+        </div>
+        <div class="product-modal-content" id="productModalContent"></div>
+      </section>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

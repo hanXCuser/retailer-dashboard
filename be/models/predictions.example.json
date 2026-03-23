@@ -1,0 +1,12 @@
+[
+  {
+    "productId": "P-1001",
+    "predictedNextPrice": 8.82,
+    "confidence": 0.93
+  },
+  {
+    "productId": "P-1002",
+    "predictedNextPrice": 16.18,
+    "confidence": 0.89
+  }
+]

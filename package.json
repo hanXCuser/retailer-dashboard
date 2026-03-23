@@ -1,0 +1,9 @@
+{
+  "name": "retailer-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Retailer dashboard for real-time inventory, pricing, and demand forecasting.",
+  "scripts": {
+    "start": "node be/server.js"
+  }
+}
